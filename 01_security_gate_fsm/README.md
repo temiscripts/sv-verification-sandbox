@@ -1,13 +1,24 @@
 # Synchronous Security Gate FSM
 
-This module implements a synchronous Finite State Machine (FSM) for a security gate, alongside a self-contained testbench to verify state transitions and output logic.
+A 2-state Finite State Machine (FSM) that controls a security gate. The gate starts locked and unlocks when a correct password signal is received. Think of it like an electronic door. It stays shut until you prove you are allowed in, and locks again the moment your credentials are removed.
 
 ## Architecture Highlights
-* **3-Always Block Structure:** The design strictly adheres to modern SystemVerilog FSM guidelines, separating sequential state memory (`always_ff`), combinational next-state logic (`always_comb`), and continuous output assignments (`assign`).
-* **Synchronous Reset:** Ensures the system reliably initializes to a known `LOCKED` state.
+**2-Always Block FSM Structure:** Follows modern SystemVerilog FSM guidelines. One always_ff block handles the sequential state register (what state are we currently in?), and one always_comb block handles next-state logic (what state should we go to next?). Keeping these separate makes the design easier to read, debug, and synthesize correctly.
 
-## Verification Strategy
-The accompanying testbench (`security_gate_tb.sv`) verifies the FSM's response to password inputs across multiple clock cycles. 
+**Synchronous Reset:** Reset only takes effect on a rising clock edge, meaning the system initialises to LOCKED in a controlled, predictable way tied to the clock.
+
+**typedef enum:** States are declared as named types (LOCKED, UNLOCKED) rather than raw numbers, making the code self-documenting and reducing the chance of errors.
+
+## Ports
+| Signal | Direction | Width | Description |
+|---|---|---|---|
+| clk | input | 1-bit | Clock |
+| rst | input | 1-bit | Synchronous reset, forces LOCKED state |
+| password_ok | input | 1-bit | High = correct password presented |
+| door_open | output | 1-bit | High = gate is unlocked |
+
+## Verification
+The testbench applies reset, then presents a correct password and verifies door_open goes high. It then removes the password and confirms the gate returns to locked. This verifies both state transitions: LOCKED to UNLOCKED and UNLOCKED to LOCKED.
 
 **Race Condition Prevention:**
-The stimulus block explicitly utilizes a `#1` intra-assignment delay after the active clock edge (e.g., `@(posedge clk); #1;`). This accurately models physical hardware hold times and prevents zero-delay race conditions between the testbench driving the inputs and the FSM sampling them.
+Stimulus changes are applied after a #1 delay following each clock edge (@(posedge clk); #1;), accurately modelling physical hold time requirements and preventing zero-delay race conditions between the testbench driving inputs and the FSM sampling them.
